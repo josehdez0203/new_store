@@ -1,0 +1,352 @@
+# Ejemplos del API de CrediStore
+# Compatible con la extensión "REST Client" de VS Code.
+# Ejecuta las peticiones en orden; las variables se completan con las respuestas.
+
+@baseUrl = http://localhost:8081/api/v1
+@email = admin@gmail.com
+@password = 123456
+
+### Salud
+GET http://localhost:8081/health
+
+### Disponibilidad de la base de datos
+GET http://localhost:8081/ready
+
+### Login
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Variables a partir del login
+@accessToken = {{login.response.body.$.data.access_token}}
+@refreshToken = {{login.response.body.$.data.refresh_token}}
+
+### Perfil propio (roles y permisos)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{accessToken}}
+
+### Actualizar perfil propio
+PATCH {{baseUrl}}/auth/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "full_name": "Administrador del Sistema"
+}
+
+### Listar usuarios (paginado)
+GET {{baseUrl}}/users?page=1&page_size=10
+Authorization: Bearer {{accessToken}}
+
+### Listar roles
+# @name roles
+GET {{baseUrl}}/roles
+Authorization: Bearer {{accessToken}}
+
+### Listar permisos
+# @name permisos
+GET {{baseUrl}}/permissions
+Authorization: Bearer {{accessToken}}
+
+### Crear usuario (reemplaza el role_id por uno real de /roles)
+POST {{baseUrl}}/users
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "email": "nuevo@gmail.com",
+  "full_name": "Nuevo Vendedor",
+  "password": "123456",
+  "is_active": true,
+  "role_ids": ["REEMPLAZAR-POR-UUID-DE-ROL-VENDEDOR"]
+}
+
+### Crear rol con permisos (reemplaza los UUID)
+POST {{baseUrl}}/roles
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "supervisor",
+  "description": "Supervisa las operaciones del negocio",
+  "permission_ids": ["REEMPLAZAR-POR-UUID-DE-PERMISO"]
+}
+
+### Reemplazar permisos de un rol
+PUT {{baseUrl}}/roles/REEMPLAZAR-POR-UUID-DEL-ROL/permissions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "permission_ids": [
+    "REEMPLAZAR-POR-UUID-DE-PERMISO-1",
+    "REEMPLAZAR-POR-UUID-DE-PERMISO-2"
+  ]
+}
+
+### Crear permiso
+POST {{baseUrl}}/permissions
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "test.read",
+  "description": "Permiso de prueba",
+  "module": "test"
+}
+
+### Listar productos
+GET {{baseUrl}}/products?page=1&page_size=10
+Authorization: Bearer {{accessToken}}
+
+### Crear producto (multipart: mínimo 3 fotos)
+# @name createProduct
+# Ajusta las rutas ./foto-1.png, ./foto-2.png y ./foto-3.png.
+POST {{baseUrl}}/products
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=----CrediStoreBoundary
+
+------CrediStoreBoundary
+Content-Disposition: form-data; name="name"
+
+Café americano
+------CrediStoreBoundary
+Content-Disposition: form-data; name="description"
+
+Bebida caliente
+------CrediStoreBoundary
+Content-Disposition: form-data; name="barcode"
+
+7501234567890
+------CrediStoreBoundary
+Content-Disposition: form-data; name="price"
+
+35.5
+------CrediStoreBoundary
+Content-Disposition: form-data; name="cost"
+
+12.25
+------CrediStoreBoundary
+Content-Disposition: form-data; name="type"
+
+product
+------CrediStoreBoundary
+Content-Disposition: form-data; name="images"; filename="foto-1.png"
+Content-Type: image/png
+
+< ./foto-1.png
+------CrediStoreBoundary
+Content-Disposition: form-data; name="images"; filename="foto-2.png"
+Content-Type: image/png
+
+< ./foto-2.png
+------CrediStoreBoundary
+Content-Disposition: form-data; name="images"; filename="foto-3.png"
+Content-Type: image/png
+
+< ./foto-3.png
+------CrediStoreBoundary--
+
+### Agregar fotos
+@productId = {{createProduct.response.body.$.data.id}}
+POST {{baseUrl}}/products/{{productId}}/images
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=----CrediStoreBoundary
+
+------CrediStoreBoundary
+Content-Disposition: form-data; name="images"; filename="foto-4.png"
+Content-Type: image/png
+
+< ./foto-4.png
+------CrediStoreBoundary--
+
+### Listar fotos
+GET {{baseUrl}}/products/{{productId}}/images
+Authorization: Bearer {{accessToken}}
+
+### Reemplazar una foto
+@productImageId = {{createProduct.response.body.$.data.images[0].id}}
+PUT {{baseUrl}}/products/{{productId}}/images/{{productImageId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=----CrediStoreBoundary
+
+------CrediStoreBoundary
+Content-Disposition: form-data; name="image"; filename="foto-nueva.png"
+Content-Type: image/png
+
+< ./foto-nueva.png
+------CrediStoreBoundary--
+
+### Eliminar una foto (no permite bajar de 3)
+DELETE {{baseUrl}}/products/{{productId}}/images/{{productImageId}}
+Authorization: Bearer {{accessToken}}
+
+### Editar datos del producto (JSON; las fotos se gestionan aparte)
+PUT {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Café americano grande",
+  "description": "Bebida caliente",
+  "barcode": "7501234567890",
+  "price": 45,
+  "cost": 15,
+  "type": "product"
+}
+
+### Eliminar producto
+DELETE {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{accessToken}}
+
+### Listar clientes
+GET {{baseUrl}}/customers?page=1&page_size=10
+Authorization: Bearer {{accessToken}}
+
+### Crear cliente
+# @name createCustomer
+POST {{baseUrl}}/customers
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "María López",
+  "address": "Av. Reforma 123",
+  "city": "Ciudad de México",
+  "postal_code": "01000",
+  "phone": "5551234567",
+  "email": "maria@example.com",
+  "status": "prospecto"
+}
+
+### Actualizar cliente
+@customerId = {{createCustomer.response.body.$.data.id}}
+PUT {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "María López",
+  "address": "Av. Reforma 456",
+  "city": "Ciudad de México",
+  "postal_code": "01010",
+  "phone": "5559876543",
+  "email": "maria@example.com",
+  "status": "cliente"
+}
+
+### Eliminar cliente
+DELETE {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{accessToken}}
+
+### Listar ventas
+GET {{baseUrl}}/sales?page=1&page_size=10
+Authorization: Bearer {{accessToken}}
+
+### Crear venta
+# @name createSale
+POST {{baseUrl}}/sales
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "client_id": "<uuid-cliente>",
+  "seller_id": "<uuid-vendedor>",
+  "sale_date": "2026-10-27",
+  "status": "cotizacion",
+  "payment_type": "credito",
+  "down_payment_percent": 20,
+  "months": 6,
+  "items": [
+    {"product_id": "<uuid-producto-1>", "quantity": 2},
+    {"product_id": "<uuid-producto-2>", "quantity": 1}
+  ]
+}
+
+### Detalle de venta
+@saleId = {{createSale.response.body.$.data.id}}
+GET {{baseUrl}}/sales/{{saleId}}
+Authorization: Bearer {{accessToken}}
+
+### Editar venta
+PUT {{baseUrl}}/sales/{{saleId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "client_id": "<uuid-cliente>",
+  "seller_id": "<uuid-vendedor>",
+  "sale_date": "2026-10-28",
+  "status": "venta",
+  "payment_type": "credito",
+  "down_payment_percent": 20,
+  "months": 6,
+  "items": [
+    {"product_id": "<uuid-producto-1>", "quantity": 2}
+  ]
+}
+
+### Confirmar cotización como venta
+PATCH {{baseUrl}}/sales/{{saleId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"status": "venta"}
+
+### Cancelar venta
+POST {{baseUrl}}/sales/{{saleId}}/cancel
+Authorization: Bearer {{accessToken}}
+
+### Configuración de crédito
+GET {{baseUrl}}/credit-settings
+Authorization: Bearer {{accessToken}}
+
+### Actualizar configuración de crédito (admin)
+PUT {{baseUrl}}/credit-settings
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "down_payment_options": [10, 20, 30],
+  "credit_months": [3, 6, 12],
+  "monthly_interest_rate": 2
+}
+
+### Métricas del panel
+GET {{baseUrl}}/dashboard/stats
+Authorization: Bearer {{accessToken}}
+
+### Sesiones activas
+GET {{baseUrl}}/auth/sessions
+Authorization: Bearer {{accessToken}}
+
+### Renovar tokens (rota el refresh token)
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "{{refreshToken}}"
+}
+
+### Cambiar contraseña
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "current_password": "123456",
+  "new_password": "654321"
+}
+
+### Cerrar la sesión actual
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+
+### Cerrar todas las sesiones
+POST {{baseUrl}}/auth/logout-all
+Authorization: Bearer {{accessToken}}

@@ -1,0 +1,23 @@
+# Binarios y artefactos
+bin/
+tmp/
+.cache/
+*.exe
+*.out
+coverage.out
+
+# Entorno local
+.env
+.env.local
+
+# IDE / SO
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Logs
+*.log
+
+# Fotos subidas de productos
+/downloads/

@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS sale_payments;
+DROP TABLE IF EXISTS sale_items;
+DROP TABLE IF EXISTS sales;
+DROP SEQUENCE IF EXISTS sale_number_seq;

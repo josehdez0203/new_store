@@ -1,0 +1,98 @@
+name: credit-store-prod
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: postgres
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - credit_store_prod_pgdata:/var/lib/postgresql/data
+      # En un volumen nuevo, este script crea api-store y xapari.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d postgres",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - backend
+    # PostgreSQL no se publica en el host.
+
+  # Idempotente: también crea las bases si el volumen ya existía.
+  db-init:
+    image: postgres:17-alpine
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_DB: postgres
+      API_DB_NAME: ${API_DB_NAME:-api-store}
+      XAPARI_DB_NAME: ${XAPARI_DB_NAME:-xapari}
+    volumes:
+      - ./db/init:/init:ro
+    entrypoint: ["/bin/sh", "/init/01-create-databases.sh"]
+    networks:
+      - backend
+
+  api:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    image: credit-store-api:prod
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      API_PORT: "8081"
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${API_DB_NAME:-api-store}?sslmode=disable
+      DOWNLOADS_DIR: /data/downloads
+      AUTO_MIGRATE: ${AUTO_MIGRATE:-true}
+      SEED_ON_START: "false"
+      TZ: ${TZ:-UTC}
+    volumes:
+      - downloads_data:/data/downloads
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8081/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 30s
+    ports:
+      # Solo loopback: el Nginx del host es el único que publica a internet.
+      - "127.0.0.1:${API_HOST_PORT:-8081}:8081"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  credit_store_prod_pgdata:
+    name: credit_store_prod_pgdata
+  downloads_data:
+    name: credit_store_prod_downloads

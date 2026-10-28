@@ -1,0 +1,31 @@
+name: credit-store
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: credit_store_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-credit_store}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-credit_store}
+      POSTGRES_DB: ${POSTGRES_DB:-credit_store}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - credit_store_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-credit_store} -d ${POSTGRES_DB:-credit_store}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  credit_store_pgdata:
+    name: credit_store_pgdata
