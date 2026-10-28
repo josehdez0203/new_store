@@ -1,0 +1,13 @@
+.env
+.env.*
+.cache/
+tmp/
+bin/
+downloads/
+.git/
+.gitignore
+Dockerfile
+.dockerignore
+README.md
+docs/
+api.http

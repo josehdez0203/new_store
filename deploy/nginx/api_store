@@ -1,0 +1,173 @@
+# ═════════════════════════════════════════════════════════════════
+# CrediStore · API + Flutter web en un único sitio Nginx.
+#
+# Instalación Debian/Ubuntu:
+#   sudo cp deploy/nginx/api_store /etc/nginx/sites-available/api_store
+#   sudo ln -s /etc/nginx/sites-available/api_store /etc/nginx/sites-enabled/api_store
+#
+# Instalación RHEL/conf.d:
+#   sudo cp deploy/nginx/api_store /etc/nginx/conf.d/api_store.conf
+#
+# Antes de recargar:
+#   1. Verifica server_name y el certificado TLS.
+#   2. Copia el build de Flutter web en /home/jose/web/app.
+#      Compílalo con --base-href /app/.
+#      Si Nginx no puede leer esa ruta, usa /var/www/credistore-web/app.
+#   3. Comprueba: sudo nginx -t && sudo systemctl reload nginx
+#
+# IMPORTANTE: el certificado configurado abajo debe cubrir
+# api-store.jhc-sistemas.com. Si el tuyo tiene otro nombre o ruta,
+# ajusta ssl_certificate y ssl_certificate_key.
+# ═════════════════════════════════════════════════════════════════
+
+upstream api_store {
+    server 127.0.0.1:8081;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api-store.jhc-sistemas.com;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type text/plain;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api-store.jhc-sistemas.com;
+
+    # Build de Flutter web: flutter build web --release --base-href /app/
+    root /home/jose/web;
+    index index.html;
+
+    # Ajusta estas rutas si el certificado de api-store.jhc-sistemas.com
+    # está en otro directorio de Let's Encrypt.
+    ssl_certificate     /etc/letsencrypt/live/delivery.jhc-sistemas.com-0001/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/delivery.jhc-sistemas.com-0001/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL_API:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    client_max_body_size 120m;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+    # Proxy hacia el contenedor de la API.
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Request-ID $request_id;
+    proxy_set_header Connection "";
+    proxy_connect_timeout 5s;
+    proxy_send_timeout 120s;
+    proxy_read_timeout 120s;
+    proxy_redirect off;
+
+    location = /health {
+        proxy_pass http://api_store;
+        access_log off;
+    }
+
+    location = /ready {
+        proxy_pass http://api_store;
+        access_log off;
+    }
+
+    location /api/ {
+        proxy_pass http://api_store;
+    }
+
+    location /downloads/ {
+        proxy_pass http://api_store;
+    }
+
+    # ── Flutter web en /app/ ─────────────────────────────────────
+    location = / {
+        return 301 /app/;
+    }
+
+    location = /app {
+        return 301 /app/;
+    }
+
+    location = /app/index.html {
+        expires -1;
+    }
+
+    location = /app/flutter_service_worker.js {
+        expires -1;
+    }
+
+    location = /app/version.json {
+        expires -1;
+    }
+
+    # Bootstrap de Flutter: debe servirse como JavaScript, nunca como HTML.
+    location = /app/flutter_bootstrap.js {
+        try_files $uri =404;
+        default_type application/javascript;
+        expires -1;
+    }
+
+    location = /app/flutter.js {
+        try_files $uri =404;
+        default_type application/javascript;
+        expires -1;
+    }
+
+    # Assets con extensión: si falta el archivo, 404; no index.html.
+    location ~* ^/app/.*\.(js|mjs|css)$ {
+        try_files $uri =404;
+        default_type application/javascript;
+        expires 1h;
+    }
+
+    location ~* ^/app/.*\.(json|map|png|jpe?g|gif|svg|ico|woff2?|ttf|otf)$ {
+        try_files $uri =404;
+        expires 30d;
+    }
+
+    location ~* ^/app/.*\.wasm$ {
+        default_type application/wasm;
+        try_files $uri =404;
+        expires 30d;
+    }
+
+    location /app/assets/ {
+        try_files $uri =404;
+        expires 30d;
+    }
+
+    location /app/canvaskit/ {
+        try_files $uri =404;
+        expires 30d;
+    }
+
+    # SPA de Flutter: entrega /app/index.html en rutas del cliente.
+    location /app/ {
+        try_files $uri $uri/ /app/index.html;
+    }
+
+    location / {
+        return 404;
+    }
+}

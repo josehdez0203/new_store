@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!--
+    Si la app se sirve en una subruta, usa:
+    flutter build web --base-href /credistore/
+    El marcador se sustituye automáticamente por Flutter.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+  <meta name="description" content="CrediStore · Sistema de ventas a crédito: clientes, créditos, cobros y control por roles.">
+  <meta name="theme-color" content="#EFF1F5">
+  <meta name="color-scheme" content="light">
+
+  <!-- iOS / PWA -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="CrediStore">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="CrediStore · Ventas a crédito">
+  <meta property="og:description" content="Gestiona clientes, créditos y cobros con acceso seguro y permisos por rol.">
+
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="manifest" href="manifest.json">
+
+  <title>CrediStore · Ventas a crédito</title>
+
+  <style>
+    :root {
+      color-scheme: light;
+      --base: #eff1f5;
+      --text: #4c4f69;
+      --subtext: #6c6f85;
+      --blue: #1e66f5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+        Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--base);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at 16% 16%, rgba(30, 102, 245, 0.16), transparent 42%),
+        radial-gradient(circle at 84% 84%, rgba(23, 146, 153, 0.14), transparent 46%),
+        linear-gradient(135deg, #f8f9fc 0%, #eff1f5 52%, #e7ecf7 100%);
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    #splash.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .splash-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 28px;
+    }
+
+    .splash-mark {
+      width: 88px;
+      height: 88px;
+      border-radius: 24px;
+      box-shadow: 0 20px 55px rgba(30, 102, 245, 0.28);
+    }
+
+    .splash-title {
+      margin: 20px 0 4px;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+    }
+
+    .splash-subtitle {
+      margin: 0;
+      font-size: 14px;
+      color: var(--subtext);
+    }
+
+    .splash-spinner {
+      width: 22px;
+      height: 22px;
+      margin-top: 30px;
+      border: 2.4px solid rgba(30, 102, 245, 0.18);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: splash-spin 0.85s linear infinite;
+    }
+
+    .splash-hint {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--subtext);
+    }
+
+    .noscript {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: var(--base);
+      text-align: center;
+      font-size: 15px;
+    }
+
+    @keyframes splash-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #splash,
+      .splash-spinner {
+        animation: none;
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="splash" role="status" aria-live="polite">
+    <div class="splash-card">
+      <img class="splash-mark" src="favicon.svg" alt="">
+      <h1 class="splash-title">CrediStore</h1>
+      <p class="splash-subtitle">Sistema de ventas a crédito</p>
+      <div class="splash-spinner" aria-hidden="true"></div>
+      <span class="splash-hint">Cargando la aplicación…</span>
+    </div>
+  </div>
+
+  <noscript>
+    <div class="noscript">
+      CrediStore necesita JavaScript habilitado para funcionar.
+    </div>
+  </noscript>
+
+  <script>
+    (function () {
+      var splash = document.getElementById('splash');
+      var hidden = false;
+
+      function hideSplash() {
+        if (hidden || !splash) return;
+        hidden = true;
+        splash.classList.add('hidden');
+        window.setTimeout(function () {
+          if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+        }, 350);
+      }
+
+      window.addEventListener('flutter-first-frame', hideSplash, { once: true });
+      // Respaldo por si el evento no se emite en algún navegador antiguo.
+      window.setTimeout(hideSplash, 20000);
+    })();
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
